@@ -57,6 +57,53 @@ FSTAB="/etc/fstab"
 # Ensure strict root's umask doesen't render the VM unusable
 umask 022
 
+usage()
+{
+	cat <<EOF
+Usage: ${0##*/} [options] TARGET
+Create a Gentoo system stage3 rootfs in the target directory.
+EOF
+}
+
+help()
+{
+    usage
+	cat <<EOF
+
+  Options:
+    --help                    display this help and exit
+    --config=FILE             load options from FILE
+    -q --quiet
+    --verbose
+
+  Stage options:
+    -a --arch=ARCH            set the architecture of the stage3
+                                [x86|amd64|x86_64|arm|...]
+    --variant                 select the architecture variant
+                                [hardened|nomultilib|hardened+nomultilib]
+    --cache=DIR               set the cache path
+                                [$CACHE]
+    -m --mirror               select the mirror
+                                [$MIRROR]
+    -t --stage3-tarball=FILE  use FILE instead of downloading the stage3 tarball
+    --portage=SOURCE          select where to load portage from
+                                [snapshot|latest|rsync|none]
+
+  Portage config options:
+    --portdir
+    --distdir
+    --pkgdir
+    [--features]
+    --profile
+
+  System config options:
+    --timezone
+    --hostname
+    (network options: ip & gateway)
+    --kernel - install a kernel binary (useful for an installer, not for chroot or lxc)
+EOF
+}
+
 ################################################################################
 #                        Various helper functions
 ################################################################################
@@ -452,19 +499,12 @@ configure()
 	fi
 }
 
-create()
+extract_stage3()
 {
-	configure
-
-	# never hurts to have a fail-safe.
-	[[ -n "${NAME//\/}" ]] \
-		|| die 8 "\$NAME (%s) IS EMPTY OR MADE OF ONLY DIRECTORY SEPERATORS, THIS IS *VERY* BAD!\n" "$NAME"
+	#configure
 
 	# the rootfs name will be built with the container name
-	ROOTFS="./${NAME}"
-
-	# check if the conffile already exists
-	[[ -e "$CONFFILE" ]] && die 18 "Error: config file (%s) already exists!\n" "$CONFFILE"
+	#ROOTFS="${1}"
 
 	# check if the rootfs already exists
 	[[ -e "$ROOTFS" ]] && die 18 "Error: \$ROOTFS (%s) already exists!" "$ROOTFS"
@@ -496,98 +536,37 @@ create()
 		printf "done.\n"
 	fi
 
-	setup_portage
-
-	write_distro_hostname \
-		|| die 1 "Error: Failed to write hostname.\n"
-
-	populate_dev
-
-	write_distro_fstab \
-		|| die 1 "Error: Failed to write fstab\n"
-
-	write_distro_timezone \
-		|| die 1 "Error: Failed to write timezone\n"
-
-	write_distro_network \
-		|| die 1 "Error: Failed to write network configuration\n"
-
-	set_guest_root_password \
-		|| die 1 "Error: Failed to set guest root password\n"
-
-	cat <<-EOF
-	All done!
-
-	To enter your container for setup WITHOUT running it, try:
-	   mount -t proc proc "$ROOTFS/proc"
-	   mount -o bind /dev "$ROOTFS/dev"
-	   chroot "$ROOTFS" /bin/bash
-	   export PS1="(${NAME}) \$PS1"
-	 (${NAME}) #   <-- you are now in the guest
-	
-	(Report bugs to https://github.com/brulzki/gentoo-stage3/issues )";
-	EOF
-}
-
-help()
-{
-	cat <<-EOF
-	Usage: $0 {create|help} [options]
-		-q : Quiet, use vars from env or options and do not ask me.
-		-i IPV4 : IP and netmask 'XX.XX.XX.XX/XX' or 'dhcp'.
-			Current/Default: ${IPV4}
-		-g GATEWAY : IP address of its gateway
-			Current/Default: ${GATEWAY}
-		-n NAME : name of the container
-			Current/Default: ${NAME}
-		-u UTSNAME : hostname of the container
-			Current/Default: ${UTSNAME}
-		-a ARCH : at the moment all but mips.
-			Current/Default: ${ARCH}
-		-p GUESTROOTPASS : password for root account
-			Current/Default: ${GUESTROOTPASS}
-		-m MIRROR : mirror for stage3 and Portage archive
-			Current/Default: ${MIRROR}
-		-t STAGE3_TARBALL : path to a stage3 archive to use
-			Specifying this option will avoid fetching stage (or asking for arch, variant and mirror)
-			Current: ${STAGE3_TARBALL} Default: null
-		-P PORTAGE_SOURCE : path to a custom portage to use. Can be one of:
-			 - tarball -- will be extracted
-			 - directory -- will be bind-mounted read-only
-			 - "none" -- do not set up a portage tree
-			A portage snapshot will be downloaded if not specified
-			Current: "$PORTAGE_SOURCE" Default: ""
-
-	This script is a helper to create Gentoo system containers.
-
-	To make a container, simply run:
-
-	gentoo-stage3 create
-
-	You can override default by environnement variables or commandline options with this override sequence :
-	default, env, cmdline option
-
-	Example :
-	$ GATEWAY=10.0.0.254 ./gentoo-stage3 create -i 10.0.0.1/24 -n gentooserver -u gentooserver
-
-	An interactive script will ask you for various information.
-
-	The first creation will download a Gentoo stage3 and portage
-	snapshot and store it into a cache at "$CACHE".
-
-	If you wish to remove the cache, point your file manager/shell into
-	"$CACHE" and remove the files you consider unneeded.
-	If you wish to update, remove the files that you consider unneeded,
-	next lxc-gentoo create run will re-download needed ones.
-
-	To destroy the container, just remove <container_name>* wherever you created it.
-	Are you sure it is not running at the moment? (use lxc-stop/kill -n <container_name> to stop/kill it.
-
-	Have fun :)
-
-	(PS: Unix hackers with a conscience do not work for morally corrupt
-		corporations or governments. Use your powers for good!)
-	EOF
+	#setup_portage
+    #
+	#write_distro_hostname \
+	#	|| die 1 "Error: Failed to write hostname.\n"
+    #
+	#populate_dev
+    #
+	#write_distro_fstab \
+	#	|| die 1 "Error: Failed to write fstab\n"
+    #
+	#write_distro_timezone \
+	#	|| die 1 "Error: Failed to write timezone\n"
+    #
+	#write_distro_network \
+	#	|| die 1 "Error: Failed to write network configuration\n"
+    #
+	#set_guest_root_password \
+	#	|| die 1 "Error: Failed to set guest root password\n"
+    #
+	#cat <<-EOF
+	#All done!
+    #
+	#To enter your container for setup WITHOUT running it, try:
+	#   mount -t proc proc "$ROOTFS/proc"
+	#   mount -o bind /dev "$ROOTFS/dev"
+	#   chroot "$ROOTFS" /bin/bash
+	#   export PS1="(${NAME}) \$PS1"
+	# (${NAME}) #   <-- you are now in the guest
+	#
+	#(Report bugs to https://github.com/brulzki/gentoo-stage3/issues )";
+	#EOF
 }
 
 fetch()
@@ -598,38 +577,80 @@ fetch()
 	execute_exclusively "portage" fetch_portage
 }
 
+#OPTIND=2
+#while getopts "i:g:n:u:a:p:m:t:P:q" opt; do
+#    case "$opt" in
+#    	i) IPV4="$OPTARG" ;;
+#    	g) GATEWAY="$OPTARG" ;;
+#    	n) NAME="$OPTARG" ;;
+#    	u) UTSNAME="$OPTARG" ;;
+#    	a) ARCH="$OPTARG" ;;
+#    	p) GUESTROOTPASS="$OPTARG" ;;
+#    	m) MIRROR="$OPTARG" ;;
+#    	t) STAGE3_TARBALL="$OPTARG" ;;
+#    	P) PORTAGE_SOURCE="$OPTARG" ;;
+#    	q) QUIET=Yes ;;
+#    	\?) ;;
+#    esac
+#done
+
+#case "$1" in
+#  create)
+#  	create;;
+#  fetch)
+#  	fetch;;
+#  help)
+#  	help;;
+#  *)
+#  	help
+#  	exit 1;;
+#esac
+
+while :
+do
+    case $1 in
+        -h | --help)
+            help
+            exit 0
+            ;;
+        -a | --arch)
+            ARCH=$2
+            shift 2
+            ;;
+        --arch=?*)
+            ARCH=${1#*=}
+            shift
+            ;;
+        -m | --mirror)
+            MIRROR=$2
+            shift 2
+            ;;
+        --mirror=?*)
+            MIRROR=${1#*=}
+            shift
+            ;;
+        -*)
+			printf >&2 'WARN: Unknown option (ignored): %s\n' "$1"
+			shift
+			;;
+        *)  # no more options; stop loop
+            break
+            ;;
+    esac
+done
+
+if [ -z "$1" ]; then
+    usage
+    echo "Try '${0##*/} --help' for more information"
+    exit
+fi
+
 # Note: assuming uid==0 is root -- might break with userns??
 if [ "$(id -u)" != "0" ]; then
 	echo "This script should be run as 'root'"
-	exit 1
+#	exit 1
 fi
 
-OPTIND=2
-while getopts "i:g:n:u:a:p:m:t:P:q" opt; do
-	case "$opt" in
-		i) IPV4="$OPTARG" ;;
-		g) GATEWAY="$OPTARG" ;;
-		n) NAME="$OPTARG" ;;
-		u) UTSNAME="$OPTARG" ;;
-		a) ARCH="$OPTARG" ;;
-		p) GUESTROOTPASS="$OPTARG" ;;
-		m) MIRROR="$OPTARG" ;;
-		t) STAGE3_TARBALL="$OPTARG" ;;
-		P) PORTAGE_SOURCE="$OPTARG" ;;
-		q) QUIET=Yes ;;
-		\?) ;;
-	esac
-done
+ROOTFS=$1
 
-case "$1" in
-	create)
-		create;;
-	fetch)
-		fetch;;
-	help)
-		help;;
-	*)
-		help
-		exit 1;;
-esac
-
+extract_stage3
